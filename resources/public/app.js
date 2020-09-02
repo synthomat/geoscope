@@ -45,7 +45,8 @@ var map = new ol.Map({
     })
 });
 
-fetch("/data")
+function fetchData(from=0) {
+fetch("/data" + location.search)
   .then(resp => resp.json())
   .then(json => {
     var data = json.data
@@ -62,13 +63,20 @@ fetch("/data")
 
     var geoMarker = new ol.Feature({
         type: 'geoMarker',
-        geometry: new ol.geom.Point(routeCoords[0])
+        geometry: new ol.geom.Point(routeCoords[routeCoords.length-1])
     });
 
     vectorLayer.getSource().addFeature(routeFeature)
     vectorLayer.getSource().addFeature(geoMarker)
     map.setView(new ol.View({
-                        center: ol.proj.fromLonLat(points[0]),
+                        center: ol.proj.fromLonLat(points[points.length -1]),
                         zoom: 14
-                    }))
-  })
+                    }))})
+}
+
+document.getElementById('from-form').onchange = function(e) {
+  var timestamp = new Date(document.getElementById('from-form').value).getTime() / 1000
+  location.href = '?range=' + timestamp
+}
+
+fetchData(0);
