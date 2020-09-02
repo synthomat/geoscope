@@ -7,14 +7,20 @@
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
             [hiccup.page :refer [html5]]
+            [next.jdbc.result-set :refer [as-unqualified-maps]]
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]])
   (:import (org.postgresql.geometric PGpoint)
-           (org.postgis PGgeometry Point)))
+           (org.postgis PGgeometry Point)
+           (java.time LocalDateTime)
+           (java.time.format DateTimeFormatter)))
 
-(def db-url (str "jdbc:postgresql://localhost/geotest"))
+(def db-url (str "jdbc:postgresql://localhost/geoscope-dev"))
 (def ds (jdbc/get-datasource db-url))
 
-;
+(defn timestamp-from-str
+  "docstring"
+  [ts]
+  (LocalDateTime/parse ts (DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss'Z'")))
 
 (defn ingress-handler
   "docstring"
@@ -25,11 +31,25 @@
         entries (map (fn [p]
                        (let [geo (:geometry p)
                              coord (:coordinates geo)]
-                         (-> {:point (PGgeometry. (Point. (nth coord 1) (nth coord 0)))})))
+                         (-> {:point     (PGgeometry. (Point. (nth coord 1) (nth coord 0)))
+                              :timestamp (timestamp-from-str (get-in p [:properties :timestamp]))})))
                      locations)]
 
     (doall (map (fn [e] (sql/insert! ds :geodata e)) entries))
     (response {:result "ok"}))
+  )
+
+(defn data-view
+  "docstring"
+  [req]
+  (let [data (sql/query ds ["SELECT * FROM geodata ORDER BY timestamp ASC"]
+                        {:builder-fn as-unqualified-maps})
+        processed (map (fn [d] (-> (assoc d :timestamp "")
+                                   (assoc :point [(.y (.getGeometry (:point d)))
+                                                  (.x (.getGeometry (:point d)))
+                                                  ] ))) data)]
+    (response {:data processed})
+    )
   )
 
 (defn index-view
@@ -51,6 +71,7 @@
 (defroutes app-routes
            (POST "/ingress" [] ingress-handler)
            (GET "/" [] index-view)
+           (GET "/data" [] data-view)
            (route/not-found "Not Found"))
 
 (def app
