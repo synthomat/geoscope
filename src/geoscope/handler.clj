@@ -52,10 +52,11 @@
         drange (LocalDateTime/ofInstant (Instant/ofEpochSecond (Integer/parseInt (first range))) (.toZoneId (TimeZone/getTimeZone "UTC")))
         data (sql/query ds ["SELECT * FROM geodata WHERE timestamp > ? ORDER BY timestamp ASC" drange]
                         {:builder-fn as-unqualified-maps})
-        processed (map (fn [d] (-> (assoc d :timestamp "")
-                                   (assoc :point [(.y (.getGeometry (:point d)))
-                                                  (.x (.getGeometry (:point d)))
-                                                  ] ))) data)]
+        processed (->> (map (fn [d] [(.y (.getGeometry (:point d)))
+                                     (.x (.getGeometry (:point d)))
+                                     ]) data)
+                       (take-nth 10)
+                       (flatten))]
     (response {:data processed})
     )
   )
@@ -63,19 +64,17 @@
 (defn index-view
   "docstring"
   [req]
+
   (html5
     [:html {:lang "en"}
      [:head
       [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css" :type "text/css"}]
-      [:style ".map { height: 750px; width: 100%; }"]
       [:script {:src "https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"}]
+      [:script {:src "https://unpkg.com/mithril/mithril.js"}]
+
       [:title "OpenLayers example"]]
      [:body
-      [:h2 "GeoScope"]
-      "From: " [:input {:id "from-form" :type "date"}] "— To: " [:input {:type "date"}]
-      [:div#map.map]
-      [:script {:src "/app.js"}]]])
-  )
+      [:script {:src "/app.js"}]]]))
 
 (defroutes app-routes
            (POST "/ingress" [] ingress-handler)
