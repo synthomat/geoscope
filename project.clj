@@ -7,19 +7,22 @@
                  [ring/ring-jetty-adapter "1.6.3"]
                  [compojure "1.6.1"]
                  [ring/ring-defaults "0.3.2"]
-                 [slingshot "0.12.2"]
                  [ring/ring-json "0.5.0"]
                  ;; https://mvnrepository.com/artifact/net.postgis/postgis-jdbc
                  [net.postgis/postgis-jdbc "2.5.0"]
+                 ;; https://mvnrepository.com/artifact/org.orbisgis/h2gis
+                 ;[org.orbisgis/h2gis "1.5.0"]
+
+                 [seancorfield/next.jdbc "1.1.610"]
+                 [migratus "1.2.8"]
+                 [slingshot "0.12.2"]
 
                  [cheshire "5.10.0"]
                  ;; https://mvnrepository.com/artifact/org.postgresql/postgresql
                  [org.postgresql/postgresql "42.2.14"]
-                 [migratus "1.2.8"]
                  [hiccup "1.0.5"]
-                 [seancorfield/next.jdbc "1.0.478"]
-                 [com.cemerick/friend "0.2.3"]
-                 [crypto-password "0.2.1"]
+                 ;[com.cemerick/friend "0.2.3"]
+                 ;[crypto-password "0.2.1"]
                  [aero "1.1.6"]]
   :plugins [[lein-ring "0.12.5"]]
   :ring {:handler geoscope.handler/app}

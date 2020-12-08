@@ -2,47 +2,48 @@
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
-            [ring.util.response :refer [response]]
-            [cheshire.core :refer [generate-string]]
-            [next.jdbc :as jdbc]
+            [ring.util.response :as r]
+            [geoscope.database :as db]
+            [geoscope.views :as v]
             [next.jdbc.sql :as sql]
-            [hiccup.page :refer [html5]]
+            [aero.core :refer [read-config]]
             [next.jdbc.result-set :refer [as-unqualified-maps]]
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]])
-  (:import (org.postgresql.geometric PGpoint)
-           (org.postgis PGgeometry Point)
-           (java.sql Timestamp)
-           (java.time LocalDateTime ZonedDateTime Instant ZoneId)
-           (java.util TimeZone)
-           (java.time.format DateTimeFormatter)))
+  (:import (java.time LocalDateTime Instant)
+           (java.util TimeZone)))
 
-(def db-url (str "jdbc:postgresql://localhost/geoscope-dev"))
-(def ds (jdbc/get-datasource db-url))
+(def config (read-config (clojure.java.io/resource "config.edn")))
 
-(defn localdatetime-from-str
-  "Parses UTC date time string to a LocalDateTime and adds the local TZ offset to it"
-  [ts]
-  (-> (ZonedDateTime/parse ts DateTimeFormatter/ISO_DATE_TIME)
-      (.withZoneSameInstant (ZoneId/systemDefault))
-      (.toOffsetDateTime)))
+(db/init! (:database config))
 
-(defn ingress-handler
+(def ack {:ok true})
+
+(defn unauthorized
+  "docstring"
+  [body]
+  (-> (r/response body)
+      (r/status 401)))
+
+(defn locations
   "docstring"
   [req]
+  (-> req :body :locations))
 
-  (let [data (:body req)
-        locations (:locations data)
-        entries (map (fn [p]
-                       (let [geo (:geometry p)
-                             coord (:coordinates geo)
-                             timestamp (localdatetime-from-str (get-in p [:properties :timestamp]))]
-                         (-> {:point     (PGgeometry. (Point. (nth coord 1) (nth coord 0)))
-                              :timestamp timestamp})))
-                     locations)]
-    (doall (map (fn [e] (sql/insert! ds :geodata e)) entries))
+(defn receive-handler
+  "docstring"
+  [req]
+  (let [token (-> req :params :token)]
+    (if-not (db/access-token token)
+      (unauthorized {:message "Not Authenticated"})
+      (let [locations (locations req)]
+        (db/batch-insert-locations! locations)
+        (r/response ack)))))
 
-    (response {:result "ok"}))
-  )
+(defn geom->coordinates
+  "Transforms a Postgres Geometry object to a corresponding coordinates vec"
+  [geom]
+  (let [g (.getGeometry geom)]
+    [(.x g) (.y g)]))
 
 (defn data-handler
   "docstring"
@@ -50,35 +51,17 @@
   (let [range (when-let [range-param (-> req :params :range)]
                 (clojure.string/split range-param #":"))
         drange (LocalDateTime/ofInstant (Instant/ofEpochSecond (Integer/parseInt (first range))) (.toZoneId (TimeZone/getTimeZone "UTC")))
-        data (sql/query ds ["SELECT * FROM geodata WHERE timestamp > ? ORDER BY timestamp ASC" drange]
+        data (sql/query @db/ds ["SELECT * FROM geopoints WHERE timestamp > ? ORDER BY timestamp ASC" drange]
                         {:builder-fn as-unqualified-maps})
-        processed (->> (map (fn [d] [(.y (.getGeometry (:point d)))
-                                     (.x (.getGeometry (:point d)))
-                                     ]) data)
-                       (take-nth 10)
+        processed (->> (map #(geom->coordinates (:geom %)) data)
+                       ;(take-nth 20)
                        (flatten))]
-    (response {:data processed})
-    )
-  )
+    (r/response {:data processed})))
 
-(defn index-view
-  "docstring"
-  [req]
-
-  (html5
-    [:html {:lang "en"}
-     [:head
-      [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css" :type "text/css"}]
-      [:script {:src "https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"}]
-      [:script {:src "https://unpkg.com/mithril/mithril.js"}]
-
-      [:title "OpenLayers example"]]
-     [:body
-      [:script {:src "/app.js"}]]]))
 
 (defroutes app-routes
-           (POST "/ingress" [] ingress-handler)
-           (GET "/" [] index-view)
+           (GET "/" [] v/index-view)
+           (POST "/receive" [] receive-handler)
            (GET "/data" [] data-handler)
            (route/not-found "Not Found"))
 
@@ -86,4 +69,5 @@
   (-> app-routes
       wrap-json-response
       (wrap-json-body {:keywords? true})
-      (wrap-defaults (assoc-in site-defaults [:security :anti-forgery] false))))
+      (wrap-defaults (-> site-defaults
+                         (assoc-in [:security :anti-forgery] false)))))
