@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  web:
+    image: geoscope
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://db/geoscope?user=postgres&password=__PLEASECHANGE_THIS_PASSWORD__
+    links:
+      - db
+
+  db:
+    image: postgis/postgis:13-master
+    environment:
+      - POSTGRES_PASSWORD=__PLEASECHANGE_THIS_PASSWORD__
+      - POSTGRES_DB=geoscope
