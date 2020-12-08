@@ -21,6 +21,11 @@
                      :migration-dir "migrations/"
                      :db            {:datasource ds}}))
 
+(defn enable-gis-extension!
+  "docstring"
+  [ds]
+  (log/info "Enabling GIS extension")
+  (jdbc/execute! ds ["CREATE EXTENSION IF NOT EXISTS postgis;"]))
 
 (defn init!
   "docstring"
@@ -28,6 +33,7 @@
   (let [db-spec {:jdbcUrl               (str "jdbc:" (-> db-config :url))
                  :reWriteBatchedInserts true}]
     (reset! ds (jdbc/get-datasource db-spec)))
+  (enable-gis-extension! @ds)
   (run-migrations! @ds))
 
 ;(init! (:database config))

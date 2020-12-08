@@ -1,4 +1,4 @@
-(defproject geoscope "0.2.0-SNAPSHOT"
+(defproject geoscope "0.3.0"
   :description "GPS tracking data receiver for the Overland app"
   :url "https://github.com/synthomat/geoscope"
   :min-lein-version "2.0.0"
