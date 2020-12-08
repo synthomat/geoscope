@@ -5,11 +5,12 @@
             [aero.core :refer [read-config]]
             [next.jdbc.result-set :as rs]
             [next.jdbc.prepare :as jprep]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [clojure.tools.logging :as log])
   (:import (java.time ZonedDateTime ZoneId)
            (java.time.format DateTimeFormatter)))
 
-(def config (read-config (clojure.java.io/resource "config.edn")))
+;(def config (read-config (clojure.java.io/resource "config.edn")))
 
 (defonce ds (atom nil))
 
@@ -20,6 +21,7 @@
                      :migration-dir "migrations/"
                      :db            {:datasource ds}}))
 
+
 (defn init!
   "docstring"
   [db-config]
@@ -29,6 +31,7 @@
   (run-migrations! @ds))
 
 ;(init! (:database config))
+
 
 (defn access-token
   "docstring"

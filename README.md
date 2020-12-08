@@ -1,6 +1,9 @@
 # geoscope
 
-FIXME
+GeoScope is a receiver app for GPS tracking data that is procuded by the [Overland App](https://github.com/aaronpk/Overland-iOS).
+
+**Project Status**  
+The project in it's current development state can be considered _experimental_; It actually can only receive the data but doesn't do much more right now.
 
 ## Prerequisites
 
@@ -16,4 +19,4 @@ To start a web server for the application, run:
 
 ## License
 
-Copyright © 2020 FIXME
+Copyright © 2020 synthomat

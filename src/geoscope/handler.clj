@@ -14,15 +14,20 @@
 
 (def config (read-config (clojure.java.io/resource "config.edn")))
 
-(db/init! (:database config))
 
-(def ack {:ok true})
+(defn init-app!
+  "docstring"
+  []
+  (db/init! (:database config)))
+
+(def ack {:result "ok"})
 
 (defn unauthorized
   "docstring"
-  [body]
-  (-> (r/response body)
-      (r/status 401)))
+  ([] (unauthorized {:message "Not Authenticated"}))
+  ([body]
+   (-> (r/response body)
+       (r/status 401))))
 
 (defn locations
   "docstring"
@@ -34,7 +39,7 @@
   [req]
   (let [token (-> req :params :token)]
     (if-not (db/access-token token)
-      (unauthorized {:message "Not Authenticated"})
+      (unauthorized)
       (let [locations (locations req)]
         (db/batch-insert-locations! locations)
         (r/response ack)))))
@@ -59,11 +64,12 @@
     (r/response {:data processed})))
 
 
-(defroutes app-routes
-           (GET "/" [] v/index-view)
-           (POST "/receive" [] receive-handler)
-           (GET "/data" [] data-handler)
-           (route/not-found "Not Found"))
+(defroutes
+  app-routes
+  (POST "/receive" [] receive-handler)
+  ;(GET "/" [] v/index-view)
+  ;(GET "/data" [] data-handler)
+  (route/not-found "Not Found"))
 
 (def app
   (-> app-routes
