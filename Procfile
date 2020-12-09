@@ -1,0 +1,1 @@
+web: java $JVM_OPTS -jar /app/target/geoscope*-standalone.jar
