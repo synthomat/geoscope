@@ -30,6 +30,10 @@
   :plugins [[lein-ring "0.12.5"]]
   :ring {:handler geoscope.handler/app
          :init geoscope.handler/init-app!}
+  :main geoscope.main
+  :uberjar-name "geoscope-standalone.jar"
   :profiles
-  {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
+
+  {:uberjar {:aot :all}
+   :dev {:dependencies [[javax.servlet/servlet-api "2.5"]
                         [ring/ring-mock "0.3.2"]]}})
