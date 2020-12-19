@@ -8,9 +8,6 @@
   (html5
     [:html {:lang "en"}
      [:head
-      ;[:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css" :type "text/css"}]
-      ;[:script {:src "https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"}]
-      ;[:script {:src "https://unpkg.com/mithril/mithril.js"}]
       [:link {:rel "stylesheet" :href "https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"}]
       [:script {:src "https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"}]
       [:title "OpenLayers example"]]

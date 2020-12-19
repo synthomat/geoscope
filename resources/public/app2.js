@@ -21,7 +21,7 @@ function getData(ts) {
         .then(x => x.json())
         .then(data => {
             var geo = data.data;
-            var latlngs = makePairs(geo)
+            var latlngs = geo
             if (lay) {map.removeLayer(lay)}
             lay = L.polyline(latlngs, {color: 'red'});
             lay.addTo(map);
