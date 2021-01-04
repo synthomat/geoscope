@@ -1,29 +1,67 @@
 (ns geoscope.gpxgen
-  (:require [clojure.data.xml :refer :all]))
+  (:require [clojure.data.xml :refer :all]
+            [clojure.tools.logging :as log])
+  (:import (java.io File)))
+
+(def map-command "/Users/synth/go/bin/create-static-map")
+
+(defn coords->gpx
+  "Converts a vector of coordinate tuples to a GPX string"
+  [coords]
+  (let [trkpt-fn (fn [x] (element "trkpt" {:lat (first x)
+                                           :lon (second x)}))
+        gpx (element "gpx" {}
+                     (element "trk" {}
+                              (element "trkseg" {}
+                                       (map trkpt-fn coords))))]
+    (emit-str gpx)))
 
 
-(def trk
-  [[48.18601319689909 11.575204797514598]
-   [48.18601254919023 11.575201626057675]
-   [48.18588350161538 11.575095549529172]
-   [48.18604225325316 11.574886984548582]
-   [48.185981821837366 11.574889147388577]
-   [48.18598848800633 11.575046366033943]
-   [48.18601441461931 11.574985262197147]
-   [48.1859970500189 11.575081095321323]
-   [48.186007539812 11.575130224124258]
-   [48.1858819594346 11.575148552999202]
-   [48.18592890698127 11.575172488549867]
-   [48.18601876315557 11.57492205974996]
-   [48.18599274680219 11.57507725140526]
-   [48.18599192949874 11.575163426982206]])
-
-(defn -main
+(defn random-file
   "docstring"
-  [& args]
-  (let [st (element "gpx" {}
-                    (element "trk" {}
-                             (element "trkseg" {}
-                                      (map (fn [x] (element "trkpt" {:lat (first x) :lon (second x)})) trk))))]
-    (spit "sample.gpx" (emit-str st)))
-  )
+  ([suffix] (File/createTempFile "track_" suffix))
+  ([] (random-file "")))
+
+(defn csm-params
+  ""
+  [params]
+  (->> (clojure.walk/stringify-keys params)
+       (into [])
+       (map #(clojure.string/join ":" %))
+       (clojure.string/join "|")))
+
+(defn call-map-cmd
+  "docstring"
+  [^File in-file]
+  (let [out-file (random-file ".png")
+        out-file-path (.getAbsolutePath out-file)
+        in-file-path (.getAbsolutePath in-file)
+        path-params (csm-params {:color  "blue"
+                                 :weight "2"
+                                 :gpx    in-file-path})
+        cmd [map-command
+             "--width" "800"
+             "--height" "600"
+             "--output" out-file-path
+             "--path" path-params]
+        cmd-res (apply shell/sh cmd)]
+    (if (= (:exit cmd-res) 0)
+      out-file
+      (log/error "Creation of static map failed with errors: " (:err cmd-res)))))
+
+
+(defn store-in-file
+  "docstring"
+  [^String gpx-data file]
+  (with-open [file (io/writer file)]
+    (.write file gpx-data))
+  file)
+
+(defn coords->image-file
+  "docstring"
+  [coords]
+  (let [gpx-data (coords->gpx coords)
+        img-file (->> (random-file)
+                      (store-in-file gpx-data)
+                      (call-map-cmd))]
+    img-file))

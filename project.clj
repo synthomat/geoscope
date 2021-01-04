@@ -1,4 +1,4 @@
-(defproject geoscope "0.3.0"
+(defproject geoscope "0.3.1"
   :description "GPS tracking data receiver for the Overland app"
   :url "https://github.com/synthomat/geoscope"
   :min-lein-version "2.0.0"
@@ -22,33 +22,14 @@
                  [migratus "1.2.8"]
                  [slingshot "0.12.2"]
                  [buddy "2.0.0"]
-
+                 [midje "1.9.9"]
                  [cheshire "5.10.0"]
                  ;; https://mvnrepository.com/artifact/org.postgresql/postgresql
                  [org.postgresql/postgresql "42.2.14"]
                  [hiccup "1.0.5"]
-                 ;[com.cemerick/friend "0.2.3"]
                  ;[crypto-password "0.2.1"]
                  [aero "1.1.6"]
-
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-main
-                 [org.geotools/gt-main "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-render
-                 [org.geotools/gt-render "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-image
-                 [org.geotools/gt-image "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-geojson
-                 [org.geotools/gt-geojson "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-tile-client
-                 [org.geotools/gt-tile-client "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-epsg-hsql
-                 [org.geotools/gt-epsg-hsql "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-referencing
-                 [org.geotools/gt-referencing "24.1"]
-                 ;; https://mvnrepository.com/artifact/org.geotools/gt-wmts
-                 [org.geotools/gt-wmts "24.1"]
-                 [org.clojure/data.xml "0.0.8"]
-                 ]
+                 [org.clojure/data.xml "0.0.8"]]
   :plugins [[lein-ring "0.12.5"]]
   :ring {:handler geoscope.handler/app
          :init    geoscope.handler/init-app!}
@@ -58,4 +39,5 @@
 
   {:uberjar {:aot :all}
    :dev     {:dependencies [[javax.servlet/servlet-api "2.5"]
-                            [ring/ring-mock "0.3.2"]]}})
+                            [ring/ring-mock "0.3.2"]]
+             :plugins [[lein-midje "3.2.1"]]}})

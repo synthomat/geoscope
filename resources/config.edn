@@ -1,1 +1,2 @@
-{:database {:url #env DATABASE_URL}}
+{:database {:url #env DATABASE_URL}
+ :static-map-command #env STATIC_MAP_CMD}

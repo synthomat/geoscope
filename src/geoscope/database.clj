@@ -71,9 +71,10 @@
    (batch-insert-locations! locations 100))
   ([locations batch-size]
    (let [records (map prep-geo-insert-params locations)
-         partitions (pad-partition batch-size records)]
+         partitions (pad-partition batch-size records)
+         sql ["INSERT INTO geopoints (geom, props, timestamp) VALUES (ST_GeomFromGeoJSON(?), ?::json, ?)"]]
      (with-open [dc (jdbc/get-connection @ds)]
        (jdbc/with-transaction [tx dc]
-                              (with-open [ps (jdbc/prepare tx ["INSERT INTO geopoints (geom, props, timestamp) VALUES (ST_GeomFromGeoJSON(?), ?::json, ?)"])]
+                              (with-open [ps (jdbc/prepare tx sql)]
                                 (doseq [batch partitions]
                                   (jprep/execute-batch! ps batch))))))))

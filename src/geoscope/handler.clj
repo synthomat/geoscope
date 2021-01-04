@@ -7,14 +7,13 @@
             [geoscope.views :as v]
             [next.jdbc.sql :as sql]
             [clojure.data.xml :refer :all]
-            [aero.core :refer [read-config]]
+            [aero.core :as [read-config]]
             [next.jdbc.result-set :refer [as-unqualified-maps]]
             [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
             [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io])
-  (:import (java.time LocalDateTime Instant ZoneOffset)
-           (java.util TimeZone)
+  (:import (java.time LocalDateTime ZoneOffset)
            (java.io File)))
 
 
@@ -56,95 +55,48 @@
     [(.y g) (.x g)]))
 
 
-(defn coords->gpx
-  "Converts a vector of coordinate tuples to a gpx as xml-string"
-  [coords]
-  (let [trkpt-fn (fn [x] (element "trkpt" {:lat (first x)
-                                           :lon (second x)}))
-        gpx (element "gpx" {}
-                     (element "trk" {}
-                              (element "trkseg" {}
-                                       (map trkpt-fn coords))))]
-    (emit-str gpx)))
-
-
-(defn random-file
-  "docstring"
-  ([suffix] (File/createTempFile "track_" suffix))
-  ([] (random-file "")))
-
-(defn store-in-file
-  "docstring"
-  [^String gpx-data file]
-  (with-open [file (io/writer file)]
-    (.write file gpx-data))
-  file)
-
-(def map-command "/Users/synth/go/bin/create-static-map")
-
-(defn csm-params
-  ""
-  [params]
-  (->> (clojure.walk/stringify-keys params)
-       (into [])
-       (map #(clojure.string/join ":" %))
-       (clojure.string/join "|")))
-
-(defn call-map-cmd
-  "docstring"
-  [^File in-file]
-  (let [out-file (random-file ".png")
-        out-file-path (.getAbsolutePath out-file)
-        in-file-path (.getAbsolutePath in-file)
-        path-params (csm-params {:color  "blue"
-                                 :weight "2"
-                                 :gpx    in-file-path})
-        cmd [map-command
-             "--width" "800" "--height" "600"
-             "--output" out-file-path
-             "--path" path-params]
-        cmd-res (apply shell/sh cmd)]
-    (if (= (:exit cmd-res) 0)
-      out-file
-      (log/error "Creation of static map failed with errors: " (:err cmd-res)))))
-
-(defn coords->image-file
-  "docstring"
-  [coords]
-  (let [gpx-data (coords->gpx coords)
-        img-file (->> (random-file)
-                      (store-in-file gpx-data)
-                      (call-map-cmd))]
-    img-file))
-
-
 (defn range->dates
   "docstring"
   [range]
   (->> (clojure.string/split range #":")
-       (map #(Integer/parseInt %))
-       (map #(LocalDateTime/ofEpochSecond % 0 (ZoneOffset/UTC)))))
+       (map #(Integer/parseInt %))))
+
+(defn ts->time
+  "docstring"
+  [ts]
+  (map #(LocalDateTime/ofEpochSecond % 0 (ZoneOffset/UTC)) ts))
+
+(defn get-coords
+  "docstring"
+  [rng]
+  (let [[min max] (ts->time rng)
+        query ["SELECT * FROM geopoints WHERE timestamp >= ? and timestamp < ? order by timestamp asc" min max]
+        data (sql/query @db/ds query {:builder-fn as-unqualified-maps})
+        processed (->> (map #(geom->coords (:geom %)) data)
+                       (take-nth 20))]
+    processed))
 
 (defn data-handler
   "docstring"
   [req]
-  (let [[min max] (range->dates (-> req :params :range))
-        data (sql/query @db/ds ["SELECT * FROM geopoints WHERE timestamp >= ? and timestamp < ? order by timestamp asc" min max]
-                        {:builder-fn as-unqualified-maps})
-        processed (->> (map #(geom->coords (:geom %)) data)
-                       (take-nth 20))]
+  (let [rng (range->dates (-> req :params :range))
+        processed (get-coords rng)]
     (r/response {:data processed})))
 
+(defn available-days
+  "docstring"
+  []
+  (let [query ["select distinct(extract(epoch from date_trunc('day', timestamp)))::integer as day from geopoints order by day desc"]]
+    (sql/query @db/ds query {:builder-fn as-unqualified-maps})))
 
 (defroutes
   app-routes
   (POST "/receive" [] receive-handler)
   (context "/api" []
-    (GET "/dates" [] (let [days (sql/query @db/ds ["select distinct(extract(epoch from date_trunc('day', timestamp)))::integer as day from geopoints order by day desc"]
-                                           {:builder-fn as-unqualified-maps})]
+    (GET "/dates" [] (let [days (available-days)]
                        (r/response {:days (map :day days)})))
     (GET "/data" [] data-handler))
-  (GET "/" [] v/index-view)
+  ;(GET "/" [] v/index-view)
   (route/not-found "Not Found"))
 
 (def app
